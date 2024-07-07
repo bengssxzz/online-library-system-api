@@ -15,6 +15,9 @@ const studInfoSchema = mongoose.model("studInfo")
 require("../Schema/pdfStatistics");
 const pdfStatistics = mongoose.model("pdfstat");
 
+require("../Schema/auditLogs");
+const auditSchema = mongoose.model("auditLog")
+
 //MULTER FOR FILE UPLOAD
 const multer  = require('multer');
 const storage = multer.diskStorage({
@@ -41,6 +44,8 @@ router.post("/upload-pdf", upload.single("File"), async (req, res) => {
     const year = req.body.Year;
     const category = req.body.Category;
     const fileDest = req.file.filename;
+    const action = "Upload PDF" 
+    const date = Date.now()
 
     try{
         const matchedTitles = await PdfDetailsSchema.find({title: title})
@@ -59,6 +64,10 @@ router.post("/upload-pdf", upload.single("File"), async (req, res) => {
                 })
                 await pdfStatistics.create({
                     title: title
+                })
+                await auditSchema.create({
+                    action: action,
+                    date: date
                 })
                 res.json({status: "Upload Success!"});
             } catch (error) {
@@ -136,8 +145,6 @@ router.post('/viewAdd', (req, res) => {
                 res.send({status: 200});
             });
         
-
-
     } catch (error) {
 
         res.send(error);
@@ -164,7 +171,6 @@ router.post('/downloadAdd', (req, res) => {
     }
 })
 
-
 router.get('/getCredentials', (req, res) => {
     try {
         regStudentsSchema.find({})
@@ -178,6 +184,8 @@ router.get('/getCredentials', (req, res) => {
 
 router.post('/editCredentials', (req, res) => {
     const id = req.body.data._id;
+    const action = "Change Student Password";
+    const date = Date.now();
 
     try {
         regStudentsSchema.findById(id)
@@ -186,6 +194,12 @@ router.post('/editCredentials', (req, res) => {
             data.save();
             res.send({status: "Changing Password Success!"});
         });
+
+        auditSchema.create({
+            action: action,
+            date: date
+        })
+
     } catch (error) {
         res.send(error);
     }
@@ -193,9 +207,16 @@ router.post('/editCredentials', (req, res) => {
 
 router.post('/deleteCredentials', async (req, res) => {
     const id = req.body.id;
+    const action = "Delete Student Account";
+    const date = Date.now();
 
     try {
         await regStudentsSchema.findByIdAndDelete(id);
+        
+        await auditSchema.create({
+            action: action,
+            date: date
+        })
 
         res.send({status: "Successfully Deleted!"});
         
@@ -206,33 +227,78 @@ router.post('/deleteCredentials', async (req, res) => {
     }
 })
 
-router.post('/editCredentials', (req, res) => {
-    const id = req.body.data._id;
+// router.post('/editCredentials', (req, res) => {
+//     const id = req.body.data._id;
 
-    try {
-        studentCreds.findById(id)
-        .then((data) => {
-            data.password = req.body.data.password;
-            data.save();
-            res.send({status: "Changing Password Success!"});
-        });
-    } catch (error) {
-        res.send(error);
-    }
-})
+//     try {
+//         studentCreds.findById(id)
+//         .then((data) => {
+//             data.password = req.body.data.password;
+//             data.save();
+//             res.send({status: "Changing Password Success!"});
+//         });
+//     } catch (error) {
+//         res.send(error);
+//     }
+// })
 
-router.post('/deleteCredentials', async (req, res) => {
-    const id = req.body.id;
+// router.post('/deleteCredentials', async (req, res) => {
+//     const id = req.body.id;
 
-    try {
-        await studentCreds.findByIdAndDelete(id);
+//     try {
+//         await studentCreds.findByIdAndDelete(id);
 
-        res.send({status: "Successfully Deleted!"});
+//         res.send({status: "Successfully Deleted!"});
         
         
-    } catch (error) {
+//     } catch (error) {
 
-        res.send({status: {error}});
+//         res.send({status: {error}});
+//     }
+// })
+
+router.post('/upload-students', async (req, res) => {
+    const students = req.body;
+    const action = "Upload CSV File";
+    const date = Date.now();
+
+    try {
+        let newStudents = [];
+        for (let student of students) {
+            const existingStudent = await studInfoSchema.findOne({
+                lrn: student.lrn
+            });
+
+            if (!existingStudent) {
+                newStudents.push(student);
+            }
+        }
+
+        if (newStudents.length > 0) {
+            await studInfoSchema.insertMany(newStudents);
+            
+            await auditSchema.create({
+                action: action,
+                date: date
+            })
+
+            res.json({ status: 'Students data uploaded successfully', inserted: newStudents.length });
+        } else {
+            res.json({ status: 'No new students to insert' });
+        }
+    } catch (error) {
+        res.json({ status: 'Error uploading data', error });
     }
-})
+});
+
+router.post('/audit-export', async (req, res) => {
+    const action = "Export CSV File";
+    const date = Date.now();
+
+    auditSchema.create({
+        action: action,
+        date: date
+    })
+});
+
 module.exports = router;

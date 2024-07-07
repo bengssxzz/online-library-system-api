@@ -6,7 +6,6 @@ const studInfoSchema = new Schema({
   lastname: String,
   firstname: String,
   middlename: String,
-  birthday: String,
 });
 
 const information = mongoose.model("studInfo", studInfoSchema);

@@ -7,9 +7,11 @@ const mongoose = require("mongoose");
 require("../Schema/regStudents");
 const regStudentsSchema = mongoose.model("regStudents");
 
-
 require("../Schema/adminDetails");
 const adminSchema = mongoose.model("admin");
+
+require("../Schema/auditLogs");
+const auditSchema = mongoose.model("auditLog")
 
 const nodemailer = require('nodemailer');
 const transporter = nodemailer.createTransport({
@@ -24,7 +26,6 @@ const transporter = nodemailer.createTransport({
     }
 
 });
-
 
 router.post("/getToken", async (req, res) => {
     console.log()
@@ -62,6 +63,8 @@ router.post("/getToken", async (req, res) => {
     else {
         const email = req.body.email;
         const password = req.body.password;
+        const action = "Admin Sign in" 
+        const date = Date.now()
 
         try {
             const admin = await adminSchema.findOne({email});
@@ -74,8 +77,6 @@ router.post("/getToken", async (req, res) => {
                         expiresIn: '3h',
                     });
                     
-
-
                     var code = "";
 
                     for (let i = 0; i < 6; i++){
@@ -84,6 +85,10 @@ router.post("/getToken", async (req, res) => {
 
                     generate2fa(admin.email, code);
                     
+                    await auditSchema.create({
+                        action: action,
+                        date: date
+                    })
                     console.log(code);
                     res.json({status: "Success!", token: token, otp: code});
 
@@ -148,9 +153,6 @@ router.post("/authorizeAdmin", async(req, res) => {
 
 
 const generate2fa = (email, code) => {
-
-    
-
 
     const receive = {
         from: "digital.archive.otp@gmail.com",

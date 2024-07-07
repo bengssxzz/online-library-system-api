@@ -14,6 +14,9 @@ const studInfoSchema = mongoose.model("studInfo");
 require("../Schema/pdfStatistics");
 const pdfStatistics = mongoose.model("pdfstat");
 
+require("../Schema/auditLogs");
+const auditSchema = mongoose.model("auditLog");
+
 router.get('/all-categ', (req, res)=> {
     try {
          PdfDetailsSchema.find({}).then((data) => {
@@ -102,13 +105,13 @@ router.get('/all-categ', (req, res)=> {
  })
 
  router.get('/pdf-statistics', (req, res) => {
-    try {
-        pdfStatistics.find({}).then((data) => {
-            res.send(data);
-        });
-    } catch (error) {
-        res.send(error);
-    }
+    // try {
+    //     pdfStatistics.find({}).then((data) => {
+    //         res.send(data);
+    //     });
+    // } catch (error) {
+    //     res.send(error);
+    // }
  })
 
  router.post('/searchbar-category', (req, res) => {
@@ -159,6 +162,9 @@ router.get('/all-categ', (req, res)=> {
 })
 
 router.post('/delete-pdf', (req, res) => {
+    const action = "Delete PDF" 
+    const date = Date.now()
+
     PdfDetailsSchema.deleteOne({title: req.body.title})
     .then(result => {
         pdfStatistics.deleteOne({title: req.body.title})
@@ -169,6 +175,9 @@ router.post('/delete-pdf', (req, res) => {
             res.send(error);
         })
         
+        auditSchema.create({
+            action: action,
+            date: date})
     })
     .catch(error => {
         res.send(error);
@@ -182,6 +191,8 @@ router.post('/edit-pdf', async (req, res) => {
     const category = req.body.data.category;
     const year = req.body.data.year;
     var isTrue = true;
+    const action = "Edit PDF Detail/s" 
+    const date = Date.now()
 
     const matchedTitles = await PdfDetailsSchema.find({title: title});
     if (matchedTitles.length > 0){
@@ -223,6 +234,11 @@ router.post('/edit-pdf', async (req, res) => {
                     data.category = category;
                     data.year = year;
                     data.save();
+
+                    auditSchema.create({
+                        action: action,
+                        date: date})
+
                     res.send({status: "Journal Successfully Edited!"});
                 });
 
